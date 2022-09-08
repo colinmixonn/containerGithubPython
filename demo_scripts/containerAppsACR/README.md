@@ -12,6 +12,13 @@ To Login to Az CLI and select a subscription
 To Install Az CLI
 If you need to install Azure CLI run the following command: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
+# Prerequisite: Clone Sample Application
+```bash
+git clone https://github.com/asw101/python-fastapi-pypy.git
+```
+```bash
+cd python-fastapi-pypy/
+```
 # Step 1 - Install Azure CLI Extension
 The Azure CLI offers the capability to load extensions. 
 Extensions allow you gain access to experimental and pre-release commands.
@@ -76,19 +83,31 @@ Results:
   "type": "Microsoft.Resources/resourceGroups"
 }
 ```
-# Step 4 - Create Azure Container Apps Environment
-Individual container apps are deployed to a single Container Apps environment, which acts as a secure boundary around groups of container apps.
-Container Apps in the same environment are deployed in the same virtual network and write logs to the same Log Analytics workspace. 
-This next command will create a Container App Environment in the Resource Group created in `Step 3`.
-
-**Command will take ~3 minutes to complete.**
-
-You can see what the variables are set at for this tutorial in that output.
-If you want to change them press `b` and run the command export `VARIABLE_NAME="new variable value"`
+# Step 4 - Create Azure Container Registry
 
 ```bash
-echo $CONTAINERAPPS_ENVIRONMENT
+az acr create --resource-group $RESOURCE_GROUP --name $ACR_NAME --sku Basic --admin-enabled true
 ```
+```bash
+az acr build -t $ACR_IMAGE_NAME -r $ACR_NAME
+```
+```bash
+CONTAINER_IMAGE=$ACR_NAME.azurecr.io/ACR_IMAGE_NAME
+```
+```bash
+REGISTRY_SERVER=$ACR_NAME.azurecr.io
+```
+```bash
+REGISTRY_USERNAME=$ACR_NAME
+```
+```bash
+REGISTRY_PASSWORD=$(az acr credential show -n $ACR_NAME --query "passwords[0].value" --out tsv)
+```
+```bash
+echo "$CONTAINER_IMAGE"
+```
+
+# Create Container Apps Environment
 ```bash
 az containerapp env create --name $CONTAINERAPPS_ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION
 ```
@@ -103,15 +122,7 @@ By setting `--ingress` to external, you make the container app available to publ
 
 You can see what the variables are set at for this tutorial in that output.
 If you want to change them press `b` and run the command export `VARIABLE_NAME="new variable value"`
-```bash
-echo $GITHUB_USERNAME
-```
 
-Update the `GITHUB_USERNAME` environment variable below with your GitHub username or organization name.
-    * **Press `b` and run the command `GITHUB_USERNAME="username"` to set variable.**
-```bash
-echo $GITHUB_USERNAME
-```
 ```bash
 CONTAINER_IMAGE=ghcr.io/$GITHUB_USERNAME/serverless-python:release
 ```
@@ -122,7 +133,7 @@ echo $CONTAINER_APP_NAME
 echo $CONTAINER_IMAGE
 ```
 ```bash
-az containerapp create --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --environment $CONTAINERAPPS_ENVIRONMENT --image "$CONTAINER_IMAGE" --target-port 80 --ingress 'external'
+az containerapp create --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --environment $CONTAINERAPPS_ENVIRONMENT --image "$CONTAINER_IMAGE" --registery-server "$REGISTRY_SERVER" --registry-username "$REGISTRY_USERNAME" --registry-password "$REGISTRY_PASSWORD" --target-port 80 --ingress 'external'
 ```
 
 # Step 6 - Test Container App with curl
